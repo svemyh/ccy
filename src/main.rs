@@ -79,6 +79,13 @@ fn find_latest_output() -> Result<CommandOutput, CcyError> {
 }
 
 #[cfg(feature = "clipboard")]
+fn check_clipboard_utilities() -> bool {
+    process::Command::new("xclip").arg("--version").output().is_ok() ||
+    process::Command::new("xsel").arg("--version").output().is_ok() ||
+    process::Command::new("wl-copy").arg("--version").output().is_ok()
+}
+
+#[cfg(feature = "clipboard")]
 fn copy_to_clipboard(text: &str) -> Result<(), CcyError> {
     // Try using system clipboard utilities directly as fallback
     // This is more reliable than the Rust clipboard crate in some environments
@@ -95,7 +102,7 @@ fn copy_to_clipboard(text: &str) -> Result<(), CcyError> {
             use std::io::Write;
             if let Some(stdin) = child.stdin.as_mut() {
                 stdin.write_all(text.as_bytes())?;
-                drop(stdin); // Close stdin to signal end of input
+                let _ = child.stdin.take(); // Close stdin to signal end of input
             }
             // Don't wait for child to avoid hanging
             Ok(())
@@ -362,6 +369,17 @@ fn main() {
             } else {
                 #[cfg(feature = "clipboard")]
                 {
+                    if !check_clipboard_utilities() {
+                        eprintln!("No clipboard utility found!");
+                        eprintln!("Install one of the following:");
+                        eprintln!("  - xclip: sudo apt install xclip");
+                        eprintln!("  - xsel: sudo apt install xsel");
+                        eprintln!("  - wl-copy: sudo apt install wl-clipboard");
+                        eprintln!("Output:");
+                        print!("{}", text);
+                        process::exit(1);
+                    }
+                    
                     match copy_to_clipboard(&text) {
                         Ok(()) => {
                             eprintln!("Successfully copied to clipboard");

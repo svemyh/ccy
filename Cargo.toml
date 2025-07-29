@@ -1,10 +1,25 @@
 [package]
 name = "ccy"
 version = "0.1.0"
-edition = "2021"
+edition = "2025"
 description = "Console Command Yank - captures and yanks the last terminal command output to clipboard"
-authors = ["Your Name <your.email@example.com>"]
+authors = ["svemyh"]
 license = "MIT"
+repository = "https://github.com/svemyh/ccy"
+homepage = "https://github.com/svemyh/ccy"
+documentation = "https://docs.rs/ccy"
+keywords = ["terminal", "clipboard", "command", "yank", "shell"]
+categories = ["command-line-utilities", "development-tools"]
+readme = "README.md"
+exclude = [
+    "/.cache/",
+    "/target/",
+    "/*.log",
+    "/test_*",
+    "/.git/",
+    "/robots/",
+    "/.gitignore"
+]
 
 [[bin]]
 name = "ccy"

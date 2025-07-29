@@ -10,7 +10,7 @@ pub fn get_session_id() -> String {
     let shell_pid = env::var("PPID").unwrap_or_else(|_| "unknown".to_string());
     
     // Method 2: Try terminal-related environment variables
-    let term_id = env::var("WINDOWID")
+    let _term_id = env::var("WINDOWID")
         .or_else(|_| env::var("TERM_SESSION_ID"))
         .or_else(|_| env::var("TMUX_PANE"))
         .unwrap_or_else(|_| "default".to_string());

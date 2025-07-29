@@ -37,10 +37,14 @@ check_dependencies() {
     fi
     
     # Check for clipboard utilities
-    if command -v xclip >/dev/null 2>&1 || command -v xsel >/dev/null 2>&1 || command -v wl-clipboard >/dev/null 2>&1; then
+    if command -v xclip >/dev/null 2>&1 || command -v xsel >/dev/null 2>&1 || command -v wl-copy >/dev/null 2>&1; then
         log_info "Clipboard utility found"
     else
-        log_warn "No clipboard utility found. Install xclip, xsel, or wl-clipboard for clipboard support"
+        log_warn "No clipboard utility found. Install xclip, xsel, or wl-copy for clipboard support"
+        log_info "On Ubuntu/Debian: sudo apt install xclip"
+        log_info "On Fedora: sudo dnf install xclip"
+        log_info "On Arch: sudo pacman -S xclip"
+        log_info "For Wayland: install wl-clipboard package"
     fi
 }
 

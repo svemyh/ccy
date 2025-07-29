@@ -1,0 +1,31 @@
+[package]
+name = "cco"
+version = "0.1.0"
+edition = "2021"
+description = "Copy Command Output - captures and copies the last terminal command output to clipboard"
+authors = ["Your Name <your.email@example.com>"]
+license = "MIT"
+
+[[bin]]
+name = "cco"
+path = "src/main.rs"
+
+[[bin]]
+name = "cco-capture"
+path = "src/capture.rs"
+
+[dependencies]
+clap = { version = "4.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+dirs = "5.0"
+thiserror = "1.0"
+strip-ansi-escapes = "0.2"
+
+[dependencies.clipboard]
+version = "0.5"
+optional = true
+
+[features]
+default = ["clipboard"]
+clipboard = ["dep:clipboard"]

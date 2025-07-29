@@ -1,17 +1,17 @@
 [package]
-name = "cco"
+name = "ccy"
 version = "0.1.0"
 edition = "2021"
-description = "Copy Command Output - captures and copies the last terminal command output to clipboard"
+description = "Console Command Yank - captures and yanks the last terminal command output to clipboard"
 authors = ["Your Name <your.email@example.com>"]
 license = "MIT"
 
 [[bin]]
-name = "cco"
+name = "ccy"
 path = "src/main.rs"
 
 [[bin]]
-name = "cco-capture"
+name = "ccy-capture"
 path = "src/capture.rs"
 
 [dependencies]

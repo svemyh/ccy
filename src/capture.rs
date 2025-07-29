@@ -21,9 +21,9 @@ fn get_cache_dir() -> io::Result<PathBuf> {
     let cache_dir = cache_dir().ok_or_else(|| {
         io::Error::new(io::ErrorKind::NotFound, "No cache directory found")
     })?;
-    let cco_dir = cache_dir.join("cco");
-    fs::create_dir_all(&cco_dir)?;
-    Ok(cco_dir)
+    let ccy_dir = cache_dir.join("ccy");
+    fs::create_dir_all(&ccy_dir)?;
+    Ok(ccy_dir)
 }
 
 fn get_session_id() -> io::Result<String> {
@@ -41,7 +41,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     
     if args.len() < 2 {
-        eprintln!("Usage: cco-capture <command>");
+        eprintln!("Usage: ccy-capture <command>");
         process::exit(1);
     }
 

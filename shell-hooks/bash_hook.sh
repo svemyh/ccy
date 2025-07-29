@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# CCO (Copy Command Output) - Bash hook script
-# This script captures command outputs for the cco tool
+# CCY (Console Command Yank) - Bash hook script
+# This script captures command outputs for the ccy tool
 
 # Function to generate consistent session ID (matches Rust implementation)
-_cco_get_session_id() {
+_ccy_get_session_id() {
     local shell_pid="${PPID:-unknown}"
     local tty_info
     
@@ -22,11 +22,11 @@ _cco_get_session_id() {
 }
 
 # Function to capture command output after execution
-_cco_capture_output() {
+_ccy_capture_output() {
     local exit_code=$?
     
     # Skip if no previous command or if it's cco itself
-    if [[ -z "$_cco_last_command" ]] || [[ "$_cco_last_command" =~ ^cco ]]; then
+    if [[ -z "$_ccy_last_command" ]] || [[ "$_ccy_last_command" =~ ^ccy ]]; then
         return $exit_code
     fi
     
@@ -36,22 +36,22 @@ _cco_capture_output() {
     fi
     
     # Skip internal commands
-    if [[ "$_cco_last_command" =~ ^(_cco_|PROMPT_COMMAND|source|export|alias|unalias|cd|pwd|echo|printf|test|\[|\]|builtin|command|type|which|history) ]]; then
+    if [[ "$_ccy_last_command" =~ ^(_ccy_|PROMPT_COMMAND|source|export|alias|unalias|cd|pwd|echo|printf|test|\[|\]|builtin|command|type|which|history) ]]; then
         return $exit_code
     fi
     
     # Use a simpler approach: capture the last command's output by re-running it
     # This is not perfect but works for many common cases
-    if command -v cco-capture >/dev/null 2>&1; then
+    if command -v ccy-capture >/dev/null 2>&1; then
         # For commands that are safe to re-run and produce consistent output
-        if [[ "$_cco_last_command" =~ ^(ls|cat|grep|find|pwd|whoami|date|df|free|ps|uname) ]]; then
+        if [[ "$_ccy_last_command" =~ ^(ls|cat|grep|find|pwd|whoami|date|df|free|ps|uname) ]]; then
             # Re-execute the command and capture output
             local output
-            output=$(eval "$_cco_last_command" 2>&1) || true
-            echo "$output" | cco-capture "$_cco_last_command" 2>/dev/null || true
+            output=$(eval "$_ccy_last_command" 2>&1) || true
+            echo "$output" | ccy-capture "$_ccy_last_command" 2>/dev/null || true
         else
             # For other commands, just store the command with empty output
-            echo "" | cco-capture "$_cco_last_command" 2>/dev/null || true
+            echo "" | ccy-capture "$_ccy_last_command" 2>/dev/null || true
         fi
     fi
     
@@ -61,20 +61,20 @@ _cco_capture_output() {
 # Set up the hook
 if [[ -n "$BASH_VERSION" ]]; then
     # Use DEBUG trap to capture commands before execution
-    _cco_debug_trap() {
+    _ccy_debug_trap() {
         local cmd="${BASH_COMMAND}"
         
         # Skip our own functions and prompt command
-        if [[ ! "$cmd" =~ ^(_cco_|PROMPT_COMMAND) ]]; then
-            _cco_last_command="$cmd"
+        if [[ ! "$cmd" =~ ^(_ccy_|PROMPT_COMMAND) ]]; then
+            _ccy_last_command="$cmd"
         fi
     }
     
     # Set the DEBUG trap
-    trap '_cco_debug_trap' DEBUG
+    trap '_ccy_debug_trap' DEBUG
     
     # Add to PROMPT_COMMAND to process captured output after execution
-    if [[ "$PROMPT_COMMAND" != *"_cco_capture_output"* ]]; then
-        PROMPT_COMMAND="_cco_capture_output; ${PROMPT_COMMAND}"
+    if [[ "$PROMPT_COMMAND" != *"_ccy_capture_output"* ]]; then
+        PROMPT_COMMAND="_ccy_capture_output; ${PROMPT_COMMAND}"
     fi
 fi

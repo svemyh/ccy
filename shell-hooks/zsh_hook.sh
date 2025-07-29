@@ -1,14 +1,14 @@
 #!/bin/zsh
 
-# CCO (Copy Command Output) - Zsh hook script
-# This script captures command outputs for the cco tool
+# CCY (Console Command Yank) - Zsh hook script
+# This script captures command outputs for the ccy tool
 
 # Function to capture command output
-_cco_capture() {
+_ccy_capture() {
     local exit_code=$?
     
     # Skip if no previous command or if it's cco itself
-    if [[ -z "$_cco_last_command" ]] || [[ "$_cco_last_command" =~ ^cco ]]; then
+    if [[ -z "$_ccy_last_command" ]] || [[ "$_ccy_last_command" =~ ^ccy ]]; then
         return $exit_code
     fi
     
@@ -17,26 +17,26 @@ _cco_capture() {
         return $exit_code
     fi
     
-    if command -v cco-capture >/dev/null 2>&1; then
+    if command -v ccy-capture >/dev/null 2>&1; then
         # Store just the command for now
         # TODO: Implement proper output capture mechanism
-        echo "" | cco-capture "$_cco_last_command" 2>/dev/null || true
+        echo "" | ccy-capture "$_ccy_last_command" 2>/dev/null || true
     fi
     
     return $exit_code
 }
 
 # Function to capture command before execution
-_cco_preexec() {
-    _cco_last_command="$1"
+_ccy_preexec() {
+    _ccy_last_command="$1"
 }
 
 # Set up zsh hooks
 if [[ -n "$ZSH_VERSION" ]]; then
     # Use preexec to capture the command
     autoload -Uz add-zsh-hook
-    add-zsh-hook preexec _cco_preexec
+    add-zsh-hook preexec _ccy_preexec
     
     # Use precmd to capture output after execution
-    add-zsh-hook precmd _cco_capture
+    add-zsh-hook precmd _ccy_capture
 fi

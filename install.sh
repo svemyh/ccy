@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# CCO (Copy Command Output) Installation Script
+# CCY (Console Command Yank) Installation Script
 
 set -e
 
-CCO_VERSION="0.1.0"
+CCY_VERSION="0.1.0"
 INSTALL_DIR="/usr/local/bin"
-CONFIG_DIR="/etc/cco"
+CONFIG_DIR="/etc/ccy"
 SHELL_HOOKS_DIR="$CONFIG_DIR/shell-hooks"
 
 # Colors for output
@@ -45,10 +45,10 @@ check_dependencies() {
 }
 
 build_binaries() {
-    log_info "Building CCO binaries..."
+    log_info "Building CCY binaries..."
     cargo build --release
     
-    if [[ ! -f "target/release/cco" ]] || [[ ! -f "target/release/cco-capture" ]]; then
+    if [[ ! -f "target/release/ccy" ]] || [[ ! -f "target/release/ccy-capture" ]]; then
         log_error "Build failed - binaries not found"
         exit 1
     fi
@@ -56,9 +56,9 @@ build_binaries() {
 
 install_binaries() {
     log_info "Installing binaries to $INSTALL_DIR..."
-    sudo cp target/release/cco "$INSTALL_DIR/"
-    sudo cp target/release/cco-capture "$INSTALL_DIR/"
-    sudo chmod +x "$INSTALL_DIR/cco" "$INSTALL_DIR/cco-capture"
+    sudo cp target/release/ccy "$INSTALL_DIR/"
+    sudo cp target/release/ccy-capture "$INSTALL_DIR/"
+    sudo chmod +x "$INSTALL_DIR/ccy" "$INSTALL_DIR/ccy-capture"
 }
 
 install_shell_hooks() {
@@ -70,13 +70,13 @@ install_shell_hooks() {
 }
 
 auto_enable() {
-    log_info "Auto-enabling CCO in current shell..."
+    log_info "Auto-enabling CCY in current shell..."
     
-    # Use the new cco --enable command
-    if command -v cco >/dev/null 2>&1; then
-        cco --enable
+    # Use the new ccy --enable command
+    if command -v ccy >/dev/null 2>&1; then
+        ccy --enable
     else
-        log_warn "cco command not found in PATH, skipping auto-enable"
+        log_warn "ccy command not found in PATH, skipping auto-enable"
     fi
 }
 
@@ -87,7 +87,7 @@ create_cache_dir() {
 }
 
 main() {
-    echo "CCO (Copy Command Output) Installer v$CCO_VERSION"
+    echo "CCY (Console Command Yank) Installer v$CCY_VERSION"
     echo "================================================"
     
     if [[ $EUID -ne 0 ]] && [[ "$1" != "--user" ]]; then
@@ -105,17 +105,17 @@ main() {
     
     echo
     log_info "Installation completed successfully!"
-    log_info "CCO has been automatically enabled in your current shell."
-    log_info "To enable CCO in other shells, run: cco --enable"
-    log_info "To disable CCO later, run: cco --disable"
+    log_info "CCY has been automatically enabled in your current shell."
+    log_info "To enable CCY in other shells, run: ccy --enable"
+    log_info "To disable CCY later, run: ccy --disable"
     echo
     log_info "Usage:"
-    log_info "  cco           - Copy last command output to clipboard"
-    log_info "  cco -p        - Print last command output to terminal"
-    log_info "  cco -c        - Copy only the command (not output)"
-    log_info "  cco -o        - Copy only the output (not command)"
-    log_info "  cco --enable  - Enable shell hooks"
-    log_info "  cco --disable - Disable shell hooks"
+    log_info "  ccy           - Yank last command output to clipboard"
+    log_info "  ccy -p        - Print last command output to terminal"
+    log_info "  ccy -c        - Yank only the command (not output)"
+    log_info "  ccy -o        - Yank only the output (not command)"
+    log_info "  ccy --enable  - Enable shell hooks"
+    log_info "  ccy --disable - Disable shell hooks"
 }
 
 main "$@"

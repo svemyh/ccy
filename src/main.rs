@@ -8,7 +8,7 @@ use thiserror::Error;
 mod session;
 
 #[derive(Error, Debug)]
-pub enum CcoError {
+pub enum CcyError {
     #[error("No cache directory found")]
     NoCacheDir,
     #[error("No recent command output found")]
@@ -30,18 +30,18 @@ struct CommandOutput {
     session_id: String,
 }
 
-fn get_cache_dir() -> Result<PathBuf, CcoError> {
-    let cache_dir = cache_dir().ok_or(CcoError::NoCacheDir)?;
-    let cco_dir = cache_dir.join("cco");
-    fs::create_dir_all(&cco_dir)?;
-    Ok(cco_dir)
+fn get_cache_dir() -> Result<PathBuf, CcyError> {
+    let cache_dir = cache_dir().ok_or(CcyError::NoCacheDir)?;
+    let ccy_dir = cache_dir.join("ccy");
+    fs::create_dir_all(&ccy_dir)?;
+    Ok(ccy_dir)
 }
 
-fn get_current_session_id() -> Result<String, CcoError> {
+fn get_current_session_id() -> Result<String, CcyError> {
     Ok(session::get_session_id())
 }
 
-fn find_latest_output() -> Result<CommandOutput, CcoError> {
+fn find_latest_output() -> Result<CommandOutput, CcyError> {
     let cache_dir = get_cache_dir()?;
     
     // First try to find output for current session
@@ -75,11 +75,11 @@ fn find_latest_output() -> Result<CommandOutput, CcoError> {
         }
     }
     
-    latest_output.ok_or(CcoError::NoRecentOutput)
+    latest_output.ok_or(CcyError::NoRecentOutput)
 }
 
 #[cfg(feature = "clipboard")]
-fn copy_to_clipboard(text: &str) -> Result<(), CcoError> {
+fn copy_to_clipboard(text: &str) -> Result<(), CcyError> {
     // Try using system clipboard utilities directly as fallback
     // This is more reliable than the Rust clipboard crate in some environments
     
@@ -138,9 +138,9 @@ fn copy_to_clipboard(text: &str) -> Result<(), CcoError> {
     // If all direct methods fail, try the Rust clipboard crate as last resort
     use clipboard::{ClipboardContext, ClipboardProvider};
     let mut ctx: ClipboardContext = ClipboardProvider::new()
-        .map_err(|e| CcoError::Clipboard(format!("Failed to create clipboard context: {}", e)))?;
+        .map_err(|e| CcyError::Clipboard(format!("Failed to create clipboard context: {}", e)))?;
     ctx.set_contents(text.to_owned())
-        .map_err(|e| CcoError::Clipboard(format!("Failed to set clipboard contents: {}", e)))?;
+        .map_err(|e| CcyError::Clipboard(format!("Failed to set clipboard contents: {}", e)))?;
     
     Ok(())
 }
@@ -177,26 +177,26 @@ fn handle_enable() {
         } else if shell_path.contains("zsh") {
             ("zsh", get_home_dir() + "/.zshrc")
         } else {
-            eprintln!("Unsupported shell. CCO supports bash and zsh.");
+            eprintln!("Unsupported shell. CCY supports bash and zsh.");
             eprintln!("Current SHELL: {}", shell_path);
             process::exit(1);
         }
     };
     
     let (shell_name, rc_file) = shell;
-    let hook_file = format!("/etc/cco/shell-hooks/{}_hook.sh", shell_name);
+    let hook_file = format!("/etc/ccy/shell-hooks/{}_hook.sh", shell_name);
     
     // Check if already enabled
     if let Ok(content) = fs::read_to_string(&rc_file) {
         if content.contains("# CCO Hook - Copy Command Output") {
-            println!("CCO is already enabled for {}", shell_name);
+            println!("CCY is already enabled for {}", shell_name);
             return;
         }
     }
     
     // Add hook to shell config
     let hook_content = format!(
-        "\n# CCO Hook - Copy Command Output\nif [[ -f \"{}\" ]]; then\n    source \"{}\"\nfi\n",
+        "\n# CCY Hook - Console Command Yank\nif [[ -f \"{}\" ]]; then\n    source \"{}\"\nfi\n",
         hook_file, hook_file
     );
     
@@ -206,7 +206,7 @@ fn handle_enable() {
                 eprintln!("Failed to write to {}: {}", rc_file, e);
                 process::exit(1);
             }
-            println!("CCO enabled for {}! Restart your shell or run: source {}", shell_name, rc_file);
+            println!("CCY enabled for {}! Restart your shell or run: source {}", shell_name, rc_file);
         }
         Err(e) => {
             eprintln!("Failed to open {}: {}", rc_file, e);
@@ -231,7 +231,7 @@ fn handle_disable() {
         } else if shell_path.contains("zsh") {
             ("zsh", get_home_dir() + "/.zshrc")
         } else {
-            eprintln!("Unsupported shell. CCO supports bash and zsh.");
+            eprintln!("Unsupported shell. CCY supports bash and zsh.");
             eprintln!("Current SHELL: {}", shell_path);
             process::exit(1);
         }
@@ -259,7 +259,7 @@ fn handle_disable() {
             let mut in_cco_section = false;
             
             for line in lines {
-                if line.trim() == "# CCO Hook - Copy Command Output" {
+                if line.trim() == "# CCY Hook - Console Command Yank" {
                     in_cco_section = true;
                     continue;
                 }
@@ -275,7 +275,7 @@ fn handle_disable() {
             let new_content = new_lines.join("\n");
             match fs::write(&rc_file, new_content) {
                 Ok(()) => {
-                    println!("CCO disabled for {}! Restart your shell to apply changes.", shell_name);
+                    println!("CCY disabled for {}! Restart your shell to apply changes.", shell_name);
                     println!("Backup saved as: {}", backup_file);
                 }
                 Err(e) => {
@@ -292,9 +292,9 @@ fn handle_disable() {
 }
 
 fn main() {
-    let matches = Command::new("cco")
+    let matches = Command::new("ccy")
         .version("0.1.0")
-        .about("Copy Command Output - copies the last terminal command output")
+        .about("Console Command Yank - yanks the last terminal command output")
         .arg(
             Arg::new("print")
                 .short('p')
@@ -319,13 +319,13 @@ fn main() {
         .arg(
             Arg::new("enable")
                 .long("enable")
-                .help("Enable CCO shell hooks in current shell")
+                .help("Enable CCY shell hooks in current shell")
                 .action(clap::ArgAction::SetTrue),
         )
         .arg(
             Arg::new("disable")
                 .long("disable")
-                .help("Disable CCO shell hooks in current shell")
+                .help("Disable CCY shell hooks in current shell")
                 .action(clap::ArgAction::SetTrue),
         )
         .get_matches();
@@ -380,7 +380,7 @@ fn main() {
                 }
             }
         }
-        Err(CcoError::NoRecentOutput) => {
+        Err(CcyError::NoRecentOutput) => {
             // TODO: Better error handling
             eprintln!("No recent command output found");
             process::exit(1);

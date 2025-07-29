@@ -80,11 +80,68 @@ fn find_latest_output() -> Result<CommandOutput, CcoError> {
 
 #[cfg(feature = "clipboard")]
 fn copy_to_clipboard(text: &str) -> Result<(), CcoError> {
+    // Try using system clipboard utilities directly as fallback
+    // This is more reliable than the Rust clipboard crate in some environments
+    
+    // Try xclip first with timeout handling
+    let xclip_result = process::Command::new("xclip")
+        .arg("-selection")
+        .arg("clipboard")
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .and_then(|mut child| {
+            use std::io::Write;
+            if let Some(stdin) = child.stdin.as_mut() {
+                stdin.write_all(text.as_bytes())?;
+                drop(stdin); // Close stdin to signal end of input
+            }
+            // Don't wait for child to avoid hanging
+            Ok(())
+        });
+    
+    if xclip_result.is_ok() {
+        return Ok(());
+    }
+    
+    // Try xsel as fallback
+    if let Ok(_) = process::Command::new("xsel")
+        .arg("--clipboard")
+        .arg("--input")
+        .stdin(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            use std::io::Write;
+            if let Some(stdin) = child.stdin.as_mut() {
+                stdin.write_all(text.as_bytes())?;
+            }
+            child.wait().map(|_| ())
+        }) {
+        return Ok(());
+    }
+    
+    // Try wl-copy for Wayland
+    if let Ok(_) = process::Command::new("wl-copy")
+        .stdin(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            use std::io::Write;
+            if let Some(stdin) = child.stdin.as_mut() {
+                stdin.write_all(text.as_bytes())?;
+            }
+            child.wait().map(|_| ())
+        }) {
+        return Ok(());
+    }
+    
+    // If all direct methods fail, try the Rust clipboard crate as last resort
     use clipboard::{ClipboardContext, ClipboardProvider};
     let mut ctx: ClipboardContext = ClipboardProvider::new()
         .map_err(|e| CcoError::Clipboard(format!("Failed to create clipboard context: {}", e)))?;
     ctx.set_contents(text.to_owned())
         .map_err(|e| CcoError::Clipboard(format!("Failed to set clipboard contents: {}", e)))?;
+    
     Ok(())
 }
 
@@ -136,7 +193,7 @@ fn main() {
                 {
                     match copy_to_clipboard(&text) {
                         Ok(()) => {
-                            // TODO: Add visual feedback
+                            eprintln!("Successfully copied to clipboard");
                         }
                         Err(e) => {
                             eprintln!("Failed to copy to clipboard: {}", e);

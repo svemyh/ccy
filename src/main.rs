@@ -145,6 +145,152 @@ fn copy_to_clipboard(text: &str) -> Result<(), CcoError> {
     Ok(())
 }
 
+fn get_home_dir() -> String {
+    use std::env;
+    
+    // Try SUDO_USER first if running under sudo
+    if let Ok(sudo_user) = env::var("SUDO_USER") {
+        if sudo_user != "root" {
+            return format!("/home/{}", sudo_user);
+        }
+    }
+    
+    // Fall back to HOME env var
+    env::var("HOME").unwrap_or_else(|_| "/tmp".to_string())
+}
+
+fn handle_enable() {
+    use std::env;
+    use std::fs::OpenOptions;
+    use std::io::Write;
+    
+    // Detect shell - handle sudo environment
+    let shell = if env::var("BASH_VERSION").is_ok() {
+        ("bash", get_home_dir() + "/.bashrc")
+    } else if env::var("ZSH_VERSION").is_ok() {
+        ("zsh", get_home_dir() + "/.zshrc")
+    } else {
+        // If no shell version vars, try to detect from SHELL env var
+        let shell_path = env::var("SHELL").unwrap_or_default();
+        if shell_path.contains("bash") {
+            ("bash", get_home_dir() + "/.bashrc")
+        } else if shell_path.contains("zsh") {
+            ("zsh", get_home_dir() + "/.zshrc")
+        } else {
+            eprintln!("Unsupported shell. CCO supports bash and zsh.");
+            eprintln!("Current SHELL: {}", shell_path);
+            process::exit(1);
+        }
+    };
+    
+    let (shell_name, rc_file) = shell;
+    let hook_file = format!("/etc/cco/shell-hooks/{}_hook.sh", shell_name);
+    
+    // Check if already enabled
+    if let Ok(content) = fs::read_to_string(&rc_file) {
+        if content.contains("# CCO Hook - Copy Command Output") {
+            println!("CCO is already enabled for {}", shell_name);
+            return;
+        }
+    }
+    
+    // Add hook to shell config
+    let hook_content = format!(
+        "\n# CCO Hook - Copy Command Output\nif [[ -f \"{}\" ]]; then\n    source \"{}\"\nfi\n",
+        hook_file, hook_file
+    );
+    
+    match OpenOptions::new().create(true).append(true).open(&rc_file) {
+        Ok(mut file) => {
+            if let Err(e) = file.write_all(hook_content.as_bytes()) {
+                eprintln!("Failed to write to {}: {}", rc_file, e);
+                process::exit(1);
+            }
+            println!("CCO enabled for {}! Restart your shell or run: source {}", shell_name, rc_file);
+        }
+        Err(e) => {
+            eprintln!("Failed to open {}: {}", rc_file, e);
+            process::exit(1);
+        }
+    }
+}
+
+fn handle_disable() {
+    use std::env;
+    
+    // Detect shell - handle sudo environment
+    let shell = if env::var("BASH_VERSION").is_ok() {
+        ("bash", get_home_dir() + "/.bashrc")
+    } else if env::var("ZSH_VERSION").is_ok() {
+        ("zsh", get_home_dir() + "/.zshrc")
+    } else {
+        // If no shell version vars, try to detect from SHELL env var
+        let shell_path = env::var("SHELL").unwrap_or_default();
+        if shell_path.contains("bash") {
+            ("bash", get_home_dir() + "/.bashrc")
+        } else if shell_path.contains("zsh") {
+            ("zsh", get_home_dir() + "/.zshrc")
+        } else {
+            eprintln!("Unsupported shell. CCO supports bash and zsh.");
+            eprintln!("Current SHELL: {}", shell_path);
+            process::exit(1);
+        }
+    };
+    
+    let (shell_name, rc_file) = shell;
+    
+    // Remove CCO hook from shell config
+    if !std::path::Path::new(&rc_file).exists() {
+        eprintln!("Shell config file not found: {}", rc_file);
+        return;
+    }
+    
+    match fs::read_to_string(&rc_file) {
+        Ok(content) => {
+            // Create backup
+            let backup_file = format!("{}.cco-backup", rc_file);
+            if let Err(e) = fs::write(&backup_file, &content) {
+                eprintln!("Warning: Failed to create backup: {}", e);
+            }
+            
+            // Remove CCO hook section
+            let lines: Vec<&str> = content.lines().collect();
+            let mut new_lines = Vec::new();
+            let mut in_cco_section = false;
+            
+            for line in lines {
+                if line.trim() == "# CCO Hook - Copy Command Output" {
+                    in_cco_section = true;
+                    continue;
+                }
+                if in_cco_section && line.trim().is_empty() && new_lines.last().map_or(false, |l: &&str| l.starts_with("fi")) {
+                    in_cco_section = false;
+                    continue;
+                }
+                if !in_cco_section {
+                    new_lines.push(line);
+                }
+            }
+            
+            let new_content = new_lines.join("\n");
+            match fs::write(&rc_file, new_content) {
+                Ok(()) => {
+                    println!("CCO disabled for {}! Restart your shell to apply changes.", shell_name);
+                    println!("Backup saved as: {}", backup_file);
+                }
+                Err(e) => {
+                    eprintln!("Failed to write updated config: {}", e);
+                    process::exit(1);
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("Failed to read {}: {}", rc_file, e);
+            process::exit(1);
+        }
+    }
+}
+
 fn main() {
     let matches = Command::new("cco")
         .version("0.1.0")
@@ -170,11 +316,36 @@ fn main() {
                 .help("Only show the output, not the command")
                 .action(clap::ArgAction::SetTrue),
         )
+        .arg(
+            Arg::new("enable")
+                .long("enable")
+                .help("Enable CCO shell hooks in current shell")
+                .action(clap::ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("disable")
+                .long("disable")
+                .help("Disable CCO shell hooks in current shell")
+                .action(clap::ArgAction::SetTrue),
+        )
         .get_matches();
 
     let print_mode = matches.get_flag("print");
     let command_only = matches.get_flag("command-only");
     let output_only = matches.get_flag("output-only");
+    let enable_mode = matches.get_flag("enable");
+    let disable_mode = matches.get_flag("disable");
+
+    // Handle enable/disable modes
+    if enable_mode {
+        handle_enable();
+        return;
+    }
+    
+    if disable_mode {
+        handle_disable();
+        return;
+    }
 
     match find_latest_output() {
         Ok(cmd_output) => {

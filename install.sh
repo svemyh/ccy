@@ -69,77 +69,15 @@ install_shell_hooks() {
     sudo chmod +x "$SHELL_HOOKS_DIR"/*.sh
 }
 
-create_enable_script() {
-    log_info "Creating enable/disable scripts..."
+auto_enable() {
+    log_info "Auto-enabling CCO in current shell..."
     
-    sudo tee "$INSTALL_DIR/cco-enable" > /dev/null << 'EOF'
-#!/bin/bash
-
-CONFIG_DIR="/etc/cco"
-SHELL_HOOKS_DIR="$CONFIG_DIR/shell-hooks"
-
-# Detect shell
-if [[ -n "$BASH_VERSION" ]]; then
-    SHELL_TYPE="bash"
-    RC_FILE="$HOME/.bashrc"
-    HOOK_FILE="$SHELL_HOOKS_DIR/bash_hook.sh"
-elif [[ -n "$ZSH_VERSION" ]]; then
-    SHELL_TYPE="zsh"
-    RC_FILE="$HOME/.zshrc"
-    HOOK_FILE="$SHELL_HOOKS_DIR/zsh_hook.sh"
-else
-    echo "Unsupported shell. CCO supports bash and zsh."
-    exit 1
-fi
-
-# Check if already enabled
-if grep -q "# CCO Hook" "$RC_FILE" 2>/dev/null; then
-    echo "CCO is already enabled for $SHELL_TYPE"
-    exit 0
-fi
-
-# Add hook to shell config
-echo "Enabling CCO for $SHELL_TYPE..."
-cat >> "$RC_FILE" << EOL
-
-# CCO Hook - Copy Command Output
-if [[ -f "$HOOK_FILE" ]]; then
-    source "$HOOK_FILE"
-fi
-EOL
-
-echo "CCO enabled! Restart your shell or run: source $RC_FILE"
-EOF
-
-    sudo tee "$INSTALL_DIR/cco-disable" > /dev/null << 'EOF'
-#!/bin/bash
-
-# Detect shell
-if [[ -n "$BASH_VERSION" ]]; then
-    RC_FILE="$HOME/.bashrc"
-elif [[ -n "$ZSH_VERSION" ]]; then
-    RC_FILE="$HOME/.zshrc"
-else
-    echo "Unsupported shell. CCO supports bash and zsh."
-    exit 1
-fi
-
-# Remove CCO hook from shell config
-if [[ -f "$RC_FILE" ]]; then
-    # Create a backup
-    cp "$RC_FILE" "$RC_FILE.cco-backup"
-    
-    # Remove CCO hook section
-    sed -i '/# CCO Hook - Copy Command Output/,/^$/d' "$RC_FILE"
-    
-    echo "CCO disabled! Restart your shell to apply changes."
-    echo "Backup saved as: $RC_FILE.cco-backup"
-else
-    echo "Shell config file not found: $RC_FILE"
-fi
-EOF
-
-    sudo chmod +x "$INSTALL_DIR/cco-enable" "$INSTALL_DIR/cco-disable"
+    # Use the new cco --enable command
+    if command -v cco >/dev/null 2>&1; then
+        cco --enable
+    else
+        log_warn "cco command not found in PATH, skipping auto-enable"
+    fi
 }
 
 create_cache_dir() {
@@ -162,19 +100,22 @@ main() {
     build_binaries
     install_binaries
     install_shell_hooks
-    create_enable_script
     create_cache_dir
+    auto_enable
     
     echo
     log_info "Installation completed successfully!"
-    log_info "To enable CCO in your current shell, run: cco-enable"
-    log_info "To disable CCO later, run: cco-disable"
+    log_info "CCO has been automatically enabled in your current shell."
+    log_info "To enable CCO in other shells, run: cco --enable"
+    log_info "To disable CCO later, run: cco --disable"
     echo
     log_info "Usage:"
-    log_info "  cco        - Copy last command output to clipboard"
-    log_info "  cco -p     - Print last command output to terminal"
-    log_info "  cco -c     - Copy only the command (not output)"
-    log_info "  cco -o     - Copy only the output (not command)"
+    log_info "  cco           - Copy last command output to clipboard"
+    log_info "  cco -p        - Print last command output to terminal"
+    log_info "  cco -c        - Copy only the command (not output)"
+    log_info "  cco -o        - Copy only the output (not command)"
+    log_info "  cco --enable  - Enable shell hooks"
+    log_info "  cco --disable - Disable shell hooks"
 }
 
 main "$@"

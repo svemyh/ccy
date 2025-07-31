@@ -5,7 +5,7 @@ TL;DR: `ccy` captures and yanks the last terminal command output to clipboard
 [![Crates.io](https://img.shields.io/crates/v/ccy)](https://crates.io/crates/ccy)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A terminal utility that captures and yanks the output of your last command and its output to the clipboard. Perfect for feeding command outputs into LLM agents or sharing terminal results at blazing speed.
+Perfect for feeding command outputs into LLM agents or sharing terminal results at blazing speed.
 
 ## Features
 

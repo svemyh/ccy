@@ -1,7 +1,7 @@
 [package]
 name = "ccy"
 version = "0.1.0"
-edition = "2025"
+edition = "2021"
 description = "Console Command Yank - captures and yanks the last terminal command output to clipboard"
 authors = ["svemyh"]
 license = "MIT"
